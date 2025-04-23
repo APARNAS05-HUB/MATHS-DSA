@@ -1,0 +1,254 @@
+STREMLIT WEB APP CODE
+App.py:
+
+import streamlit as st
+import base64
+
+# Set background image
+def set_bg(path):
+    with open(path, "rb") as f:
+        data = f.read()
+    encoded = base64.b64encode(data).decode()
+    st.markdown(
+        f"""
+        <style>
+        .stApp {{
+            background-image: url("data:image/jpg;base64,{encoded}");
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+        }}
+        </style>
+        """,
+        unsafe_allow_html=True
+    )
+
+set_bg("assets/bg.jpg")
+
+# Title and description (blue color)
+st.markdown("<h1 style='color: #003366; font-weight: bold;'>🎨 Welcome to ArtStyle Classifier</h1>", unsafe_allow_html=True)
+st.markdown("<p style='color: #336699; font-size: 18px;'>Upload an artwork and we'll identify its art style.</p>", unsafe_allow_html=True)
+
+# Styled dark blue button
+st.markdown("""
+    <style>
+    div.stButton > button:first-child {
+        background-color: #003366;
+        color: white;
+        font-weight: bold;
+        width: 100%;
+        margin-top: 2rem;
+        padding: 0.75rem;
+        border-radius: 8px;
+    }
+    </style>
+""", unsafe_allow_html=True)
+
+if st.button("Next"):
+    st.switch_page("pages/1_Classify.py")
+
+
+classify .py
+
+
+import streamlit as st
+import torch
+import torchvision.transforms as transforms
+from PIL import Image
+import base64
+from torchvision.models.swin_transformer import SwinTransformer
+from torch.serialization import add_safe_globals
+import os
+
+# Set background
+def set_bg(image_path):
+    with open(image_path, "rb") as file:
+        encoded = base64.b64encode(file.read()).decode()
+    st.markdown(
+        f"""
+        <style>
+        .stApp {{
+            background-image: url("data:image/jpg;base64,{encoded}");
+            background-size: cover;
+            background-attachment: fixed;
+        }}
+        </style>
+        """,
+        unsafe_allow_html=True
+    )
+
+set_bg("assets/bg2.jpg")
+
+# Title
+st.markdown("<h1 style='color:darkblue;'>🖼️ Classify Art Style</h1>", unsafe_allow_html=True)
+
+# Upload image
+uploaded_file = st.file_uploader("Upload an artwork image", type=["jpg", "jpeg", "png"])
+
+# Prediction
+if uploaded_file is not None:
+    image = Image.open(uploaded_file).convert("RGB")
+    st.image(image, caption="Uploaded Artwork", use_column_width=True)
+
+    transform = transforms.Compose([
+        transforms.Resize((224, 224)),
+        transforms.ToTensor()
+    ])
+
+    input_tensor = transform(image).unsqueeze(0)
+
+    # Safely load model
+    model_path = "model/swin_art_style_model.pt"
+    add_safe_globals([SwinTransformer])  # Allow model class
+
+    try:
+        model = torch.load(model_path, map_location=torch.device("cpu"), weights_only=False)
+        model.eval()
+
+        with torch.no_grad():
+            output = model(input_tensor)
+            predicted_class = output.argmax().item()
+
+        # Define label map (adjust to your actual class labels)
+        label_map = [
+            "Academic_Art", "Art_Nouveau", "Baroque", "Expressionism", "Japanese_Art",
+            "Neoclassicism", "Primitivism", "Realism", "Renaissance", "Rococo",
+            "Romanticism", "Symbolism", "Western_Medieval"
+        ]
+        predicted_style = label_map[predicted_class]
+
+        st.success(f"🎨 Predicted Style: {predicted_style}")
+        st.session_state["selected_style"] = predicted_style
+
+        # Button to go to next page
+        if st.button("Next ➡️", key="next1"):
+            st.switch_page("pages/2_Art_Style_Info.py")
+
+    except Exception as e:
+        st.error(f"❌ Error loading model: {e}")
+else:
+    st.info("Please upload an image to classify.")
+
+
+
+art_style_:
+import streamlit as st
+import json
+import base64
+
+# Background
+def set_bg(image_path):
+    with open(image_path, "rb") as file:
+        encoded = base64.b64encode(file.read()).decode()
+    st.markdown(
+        f"""
+        <style>
+        .stApp {{
+            background-image: url("data:image/jpg;base64,{encoded}");
+            background-size: cover;
+            background-attachment: fixed;
+        }}
+        </style>
+        """,
+        unsafe_allow_html=True
+    )
+
+set_bg("assets/bg2.jpg")
+
+# Title
+st.markdown("<h1 style='color:darkblue;'>📝 Description of Predicted Style</h1>", unsafe_allow_html=True)
+
+# Get predicted style
+style = st.session_state.get('selected_style', None)
+
+if style:
+    try:
+        with open("data/art_descriptions.json", "r", encoding="utf-8") as file:
+            descriptions_data = json.load(file)
+
+        description_list = descriptions_data.get(style, [])
+
+        st.markdown(f"<h2 style='color:blue;'>{style}</h2>", unsafe_allow_html=True)
+
+        for line in description_list:
+            st.markdown(f"<p style='font-size:18px;'>• {line}</p>", unsafe_allow_html=True)
+
+        # Button to go to next page
+        if st.button("Next ➡️", key="next2"):
+            st.switch_page("pages/3_Artwork_Suggestions.py")
+
+    except Exception as e:
+        st.error(f"Error reading descriptions: {e}")
+else:
+    st.warning("No style predicted yet. Please go back and upload an image first.")
+
+
+
+artwork suggestions:
+import streamlit as st
+import base64
+import requests
+
+# Set page config
+st.set_page_config(page_title="Artwork Chat Assistant", layout="centered")
+
+# Set background
+def set_bg_from_local(image_path):
+    with open(image_path, "rb") as img_file:
+        encoded = base64.b64encode(img_file.read()).decode()
+    css = f"""
+    <style>
+    .stApp {{
+        background-image: url("data:image/jpg;base64,{encoded}");
+        background-size: cover;
+        background-position: center;
+        background-repeat: no-repeat;
+    }}
+    </style>
+    """
+    st.markdown(css, unsafe_allow_html=True)
+
+# Apply background image
+set_bg_from_local("assets/bg2.jpg")  # ✅ Make sure the path is correct
+
+# Title with black or blue
+st.markdown("<h1 style='color: black;'>Ask anything about Artwork Style </h1>", unsafe_allow_html=True)
+# You can change 'black' to '#1E90FF' for blue if needed
+
+# API key
+openrouter_api_key = "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"  # Replace with your actual API key
+
+# User input
+user_input = st.text_input("Ask something about artwork styles:")
+
+# Handle chat
+if user_input:
+    with st.spinner("Generating response..."):
+        try:
+            response = requests.post(
+                "https://openrouter.ai/api/v1/chat/completions",
+                headers={
+                    "Authorization": f"Bearer {openrouter_api_key}",
+                    "Content-Type": "application/json"
+                },
+                json={
+                    "model": "mistralai/mistral-7b-instruct",
+                    "messages": [
+                        {"role": "system", "content": "You are a helpful assistant for classifying artwork styles."},
+                        {"role": "user", "content": user_input}
+                    ]
+                }
+            )
+            result = response.json()
+            answer = result["choices"][0]["message"]["content"]
+
+            st.markdown("**AI Assistant Says:**", unsafe_allow_html=True)
+            st.markdown(f"<div style='color:#1E90FF; font-weight:bold;'>{answer}</div>", unsafe_allow_html=True)
+
+        except Exception as e:
+            st.error("🚫 Could not connect to LLM. Check your API key and internet connection.")
+            st.exception(e)
+
+
+
+
